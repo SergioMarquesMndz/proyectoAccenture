@@ -1,0 +1,15 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"value": "ejercicio2grupo8"
+		},
+		"ejercicio2grupo8-WorkspaceDefaultSqlServer_connectionString": {
+			"value": ""
+		},
+		"ejercicio2grupo8-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"value": "https://ejercicio2grupo8.dfs.core.windows.net"
+		}
+	}
+}
