@@ -21,6 +21,15 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('workspaceName'), '/Spark1')]",
+			"type": "Microsoft.Synapse/workspaces/bigDataPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/ejercicio2grupo8-WorkspaceDefaultSqlServer')]",
 			"type": "Microsoft.Synapse/workspaces/linkedServices",
 			"apiVersion": "2019-06-01-preview",
@@ -105,11 +114,12 @@
 					"executorMemory": "28g",
 					"executorCores": 4,
 					"numExecutors": 2,
+					"runAsWorkspaceSystemIdentity": false,
 					"conf": {
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "a9a240f5-ac79-4ab2-ab37-aafa17e8b227"
+						"spark.autotune.trackingId": "239b41d9-e28e-43a5-a3c6-07a2042c964e"
 					}
 				},
 				"metadata": {
@@ -141,7 +151,7 @@
 						},
 						"source": [
 							"#Se almacenan los ficheros en RDD\r\n",
-							"\r\n",
+							" \r\n",
 							"from pyspark.sql import Row\r\n",
 							"\r\n",
 							"sc = spark.sparkContext\r\n",
