@@ -14,7 +14,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a9a240f5-ac79-4ab2-ab37-aafa17e8b227"
+				"spark.autotune.trackingId": "6297a0b5-8f0d-43a3-afd4-a5688971a4a6"
 			}
 		},
 		"metadata": {
@@ -46,7 +46,7 @@
 				},
 				"source": [
 					"#Se almacenan los ficheros en RDD\r\n",
-					"\r\n",
+					" \r\n",
 					"from pyspark.sql import Row\r\n",
 					"\r\n",
 					"sc = spark.sparkContext\r\n",
