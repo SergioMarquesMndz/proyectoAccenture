@@ -1,0 +1,544 @@
+{
+	"name": "Notebook_final",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "8a3a385f-c04f-423b-85fb-6f047e20687a"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#Se almacenan los ficheros en RDD\r\n",
+					"\r\n",
+					"from pyspark.sql import Row\r\n",
+					"\r\n",
+					"sc = spark.sparkContext\r\n",
+					"\r\n",
+					"dfUserIdArtnameFile = \"abfss://users@ejercicio2grupo8.dfs.core.windows.net/userid-timestamp-artid-artname-traid-traname.tsv\"\r\n",
+					"dfUserIdArtnameRDD = sc.textFile(dfUserIdArtnameFile)\r\n",
+					"\r\n",
+					"dfUserIdProfileFile = \"abfss://users@ejercicio2grupo8.dfs.core.windows.net/userid-profile_clean.tsv\"\r\n",
+					"dfUserIdProfileRDD = sc.textFile(dfUserIdProfileFile)\r\n",
+					"\r\n",
+					"dfHoroscopeFile = \"abfss://users@ejercicio2grupo8.dfs.core.windows.net/horoscope_clean.csv\"\r\n",
+					"dfHoroscopeRDD = sc.textFile(dfHoroscopeFile)\r\n",
+					"\r\n",
+					"dfCountryFile = \"abfss://users@ejercicio2grupo8.dfs.core.windows.net/countryContinent_UTF8_clean.csv\"\r\n",
+					"dfCountryRDD = sc.textFile(dfCountryFile)\r\n",
+					""
+				],
+				"execution_count": 121
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Se almacenan los usuarios, después de procesarlos, en un dataframe\r\n",
+					"\r\n",
+					"dfUserIdProfileRDD_v2 = dfUserIdProfileRDD.filter(lambda s: s.split(\"\\t\")[3] != '').map( lambda s: s.split(\"\\t\")[0] + \"\\t\" + s.split(\"\\t\")[3] + \"\\t\" + (s.split(\"\\t\")[4]).split(\" \")[0] +\"\\t\"+ (s.split(\"\\t\")[4]).split(\" \")[1])\r\n",
+					"\r\n",
+					"\r\n",
+					"def mesANumero(mes):\r\n",
+					"    if 'Jan' in mes:\r\n",
+					"        return '1'\r\n",
+					"    elif 'Feb' in mes:\r\n",
+					"        return '2'\r\n",
+					"    elif 'Mar' in mes:\r\n",
+					"        return '3'\r\n",
+					"    elif 'Apr' in mes:\r\n",
+					"        return '4'\r\n",
+					"    elif 'May' in mes:\r\n",
+					"        return '5'\r\n",
+					"    elif 'Jun' in mes:\r\n",
+					"        return '6'\r\n",
+					"    elif 'Jul' in mes:\r\n",
+					"        return '7'\r\n",
+					"    elif 'Aug' in mes:\r\n",
+					"        return '8'\r\n",
+					"    elif 'Sep' in mes:\r\n",
+					"        return '9'\r\n",
+					"    elif 'Oct' in mes:\r\n",
+					"        return '10'\r\n",
+					"    elif 'Nov' in mes:\r\n",
+					"        return '11'\r\n",
+					"    elif 'Dec' in mes:\r\n",
+					"        return '12'\r\n",
+					"    else:\r\n",
+					"        return '0'\r\n",
+					"\r\n",
+					"dfUserIdProfileRDD_v3 = dfUserIdProfileRDD_v2.map( lambda s: s.split(\"\\t\")[0] + \"\\t\" + s.split(\"\\t\")[1] + \"\\t\" + mesANumero(s.split(\"\\t\")[2]) + \"\\t\" + (s.split(\"\\t\")[3]).split(\",\")[0])\r\n",
+					"\r\n",
+					"\r\n",
+					"dfUserIdProfile_v3Map = dfUserIdProfileRDD_v3.map(lambda l: l.split(\"\\t\"))\r\n",
+					"dfUserIdProfile_v3_struct = dfUserIdProfile_v3Map.map(lambda p: Row(userID=p[0], country=p[1], mes=p[2], dia=p[3]))\r\n",
+					"dfUserIdProfile_v3 = spark.createDataFrame(dfUserIdProfile_v3_struct)\r\n",
+					"display(dfUserIdProfile_v3)\r\n",
+					""
+				],
+				"execution_count": 116
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Se guardan los usuarios en una tabla HIVE llamada 'userIdProfile'\r\n",
+					"\r\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS usuarios\")\r\n",
+					"\r\n",
+					"dfUserIdProfile_v3.write.mode(\"overwrite\").saveAsTable(\"userIdProfile\")\r\n",
+					"\r\n",
+					"dfUserIdProfileTable = spark.sql(\"SELECT * FROM userIdProfile\") \r\n",
+					"display(dfUserIdProfileTable)\r\n",
+					""
+				],
+				"execution_count": 117
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Se almacenan los horóscopos, después de procesarlos, en un dataframe\r\n",
+					"\r\n",
+					"dfHoroscopeRDD_v2 = dfHoroscopeRDD.map( lambda s: ((s.split(\",\")[0]).split(\" \")[0] + \",\" + (s.split(\",\")[0]).split(\" \")[1] + \",\" +  (s.split(\",\")[0]).split(\" \")[3] + \",\" +  (s.split(\",\")[0]).split(\" \")[4] + \",\" + s.split(\",\")[1]))\r\n",
+					"\r\n",
+					"dfHoroscopeRDD_v3 = dfHoroscopeRDD_v2.map( lambda s: mesANumero(s.split(\",\")[0]) + \",\" + s.split(\",\")[1] + \",\" + mesANumero(s.split(\",\")[2]) + \",\" + s.split(\",\")[3] + \",\" + s.split(\",\")[4])\r\n",
+					"\r\n",
+					"dfHoroscope_v3Map = dfHoroscopeRDD_v3.map(lambda l: l.split(\",\"))\r\n",
+					"dfHoroscope_v3_struct = dfHoroscope_v3Map.map(lambda p: Row(mesIni=p[0], diaIni=p[1], mesFin=p[2], diaFin=p[3], signo=p[4]))\r\n",
+					"dfHoroscope_v3 = spark.createDataFrame(dfHoroscope_v3_struct)\r\n",
+					"display(dfHoroscope_v3)\r\n",
+					""
+				],
+				"execution_count": 118
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Se guardan los horóscopos en una tabla HIVE llamada 'horoscope'\r\n",
+					"\r\n",
+					"dfHoroscope_v3.write.mode(\"overwrite\").saveAsTable(\"horoscope_ori\")\r\n",
+					"\r\n",
+					"dfHoroscopeTable = spark.sql(\"SELECT distinct * FROM horoscope_ori\") \r\n",
+					"\r\n",
+					"dfHoroscopeTable.write.mode(\"overwrite\").saveAsTable(\"horoscope\")\r\n",
+					"\r\n",
+					"display(dfHoroscopeTable)\r\n",
+					""
+				],
+				"execution_count": 119
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Se almacenan los países y continentes, después de procesarlos, en un dataframe\r\n",
+					"# y a continuación en una tabla HIVE llamada countries\r\n",
+					"\r\n",
+					"dfCountry_v3Map = dfCountryRDD.map(lambda l: l.split(\",\"))\r\n",
+					"dfCountry_v3_struct = dfCountry_v3Map.map(lambda p: Row(country=p[0], continent=p[1]))\r\n",
+					"dfCountry_v3 = spark.createDataFrame(dfCountry_v3_struct)\r\n",
+					"\r\n",
+					"dfCountry_v3.write.mode(\"overwrite\").saveAsTable(\"countries\")\r\n",
+					"\r\n",
+					"dfCountryTable = spark.sql(\"SELECT * FROM countries\") \r\n",
+					"display(dfCountryTable)\r\n",
+					""
+				],
+				"execution_count": 122
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Se almacenan los grupos, después de procesarlos, en un dataframe\r\n",
+					"# y a continuación en una tabla HIVE llamada userIdArtname\r\n",
+					"\r\n",
+					"dfUserIdArtnameRDD_v2 = dfUserIdArtnameRDD.map( lambda s: s.split(\"\\t\")[0] + \"\\t\" + s.split(\"\\t\")[3])\r\n",
+					"\r\n",
+					"dfUserIdArtname_v3Map = dfUserIdArtnameRDD_v2.map(lambda l: l.split(\"\\t\"))\r\n",
+					"dfUserIdArtname_v3_struct = dfUserIdArtname_v3Map.map(lambda p: Row(userID=p[0], group=p[1]))\r\n",
+					"dfUserIdArtname_v3 = spark.createDataFrame(dfUserIdArtname_v3_struct)\r\n",
+					"\r\n",
+					"dfUserIdArtname_v3.write.mode(\"overwrite\").saveAsTable(\"userIdArtname\")\r\n",
+					"\r\n",
+					"dfUserIdArtnameTable = spark.sql(\"SELECT * FROM userIdArtname\") \r\n",
+					"display(dfUserIdArtnameTable)"
+				],
+				"execution_count": 123
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Tabla maestra con el horóscopo y con países por continente\r\n",
+					"# Se crea la tabla HIVE horoscope_countries con los horóscopos y los continentes\r\n",
+					"\r\n",
+					"horoscopeCountries = spark.sql(\"select distinct signo, mesIni, diaIni, mesFin, diaFin, country, continent from horoscope, countries\")\r\n",
+					"\r\n",
+					"horoscopeCountries.write.partitionBy(\"signo\").mode(\"overwrite\").saveAsTable(\"horoscope_countries\")\r\n",
+					"\r\n",
+					"dfHoroscopeCountries = spark.sql(\"select * from horoscope_countries\")\r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"SELECT *\r\n",
+					"FROM horoscope_countries\r\n",
+					"\"\"\"))"
+				],
+				"execution_count": 131
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"\r\n",
+					"# El equipo de desarrollo de negocio quiere implementar una funcionalidad para agrupar los usuarios por su horóscopo fijándose en la fecha de registro. \r\n",
+					"# Se crea la tabla HIVE users_horoscope en la que se muestra el usuario y el horóscopo que le corresponde\r\n",
+					"\r\n",
+					"dfUsersHoroscope = spark.sql(\"\"\"   \r\n",
+					"    select distinct a.userID, b.signo\r\n",
+					"    from userIdProfile a, horoscope b   \r\n",
+					"    where ((b.mesIni = a.mes and b.diaIni <= a.dia)   \r\n",
+					"    or (b.mesFin = a.mes and b.diaFin >= a.dia))  \r\n",
+					"    \"\"\")\r\n",
+					"\r\n",
+					"dfUsersHoroscope.write.partitionBy(\"signo\").mode(\"overwrite\").saveAsTable(\"users_horoscope\")\r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"SELECT *\r\n",
+					"FROM users_horoscope\r\n",
+					"\"\"\"))\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 133
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Necesitan saber a qué continente pertenece cada usuario\r\n",
+					"# Se crea la tabla HIVE users_country el la que apacere el usuario y el continente al que pertenece\r\n",
+					"\r\n",
+					"dfUsersCountry = spark.sql(\"\"\"   \r\n",
+					"    select distinct a.userID, b.continent\r\n",
+					"\r\n",
+					"    from userIdProfile a, countries b \r\n",
+					"\r\n",
+					"    where a.country = b.country  \r\n",
+					"    \"\"\")\r\n",
+					"\r\n",
+					"dfUsersCountry.write.partitionBy(\"continent\").mode(\"overwrite\").saveAsTable(\"users_country\")\r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"SELECT *\r\n",
+					"FROM users_country\r\n",
+					"\"\"\"))\r\n",
+					""
+				],
+				"execution_count": 136
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Se necesita saber cuántos usuarios por país pertenecen a cada signo del horóscopo\r\n",
+					"# Se crea una tabla HIVE llamada count_users_country_horoscope en la que se muestran el número de usuarios por país y por continente\r\n",
+					"\r\n",
+					"dfCountUsersCountryHororcope = spark.sql(\"\"\"   \r\n",
+					"    select count(*) num_usuarios, a.country, b.signo\r\n",
+					"\r\n",
+					"    from userIdProfile a, horoscope b\r\n",
+					"\r\n",
+					"    where ((b.mesIni = a.mes and b.diaIni <= a.dia)   \r\n",
+					"    or (b.mesFin = a.mes and b.diaFin >= a.dia))\r\n",
+					"\r\n",
+					"    group by a.country, b.signo  \r\n",
+					"    \"\"\")\r\n",
+					"\r\n",
+					"dfCountUsersCountryHororcope.write.partitionBy(\"signo\").mode(\"overwrite\").saveAsTable(\"count_users_country_horoscope\")\r\n",
+					"\r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"SELECT *\r\n",
+					"FROM count_users_country_horoscope\r\n",
+					"\"\"\"))\r\n",
+					""
+				],
+				"execution_count": 138
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# y cuál es el signo que tiene más usuarios a nivel mundial\r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"    select signo, count(*) num_usuarios \r\n",
+					"    from users_horoscope\r\n",
+					"    group by signo \r\n",
+					"    order by num_usuarios desc limit(1)\r\n",
+					"    \"\"\")\r\n",
+					")\r\n",
+					"\r\n",
+					"# En base al resultado de la consulta anterior, el signo es piscis"
+				],
+				"execution_count": 139
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# y cuál es el grupo que más escucha ese signo\r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"    select signo, group, count(*) num_usuarios \r\n",
+					"    from users_horoscope a, userIdArtname b\r\n",
+					"    where a.userID = b.userID and \r\n",
+					"    a.signo = 'pisces'\r\n",
+					"    group by signo, group  \r\n",
+					"    order by num_usuarios desc limit(1) \r\n",
+					"    \"\"\")\r\n",
+					")\r\n",
+					"\r\n",
+					"# En base al resultado de la consulta anterior, el grupo es The Beatles"
+				],
+				"execution_count": 141
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# ¿En qué continente deberían publicitar más la aplicación?\r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"    select continent, count(*) num_usuarios \r\n",
+					"    from userIdProfile a, countries b\r\n",
+					"    where a.country = b.country\r\n",
+					"    and continent != ''\r\n",
+					"    group by continent  \r\n",
+					"    order by num_usuarios \r\n",
+					"    \"\"\")\r\n",
+					")\r\n",
+					"\r\n",
+					"# En vista al resultado de la contulta creeemos que el continente donde se debería de publicitar más la aplicación es\r\n",
+					"# Américas, por que hay una mayor cantidad de población, por cultura y publicitar en América es más sencillo que en África y en muchos sitios de Asia"
+				],
+				"execution_count": 142
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# ¿Hay algún continente que falte?  \r\n",
+					"\r\n",
+					"display(spark.sql(\"\"\"\r\n",
+					"    select * \r\n",
+					"    from countries a \r\n",
+					"    where continent not in \r\n",
+					"        (select continent \r\n",
+					"        from userIdProfile a, countries b\r\n",
+					"        where a.country = b.country\r\n",
+					"        and continent != ''\r\n",
+					"        group by continent  )\r\n",
+					"    \"\"\")\r\n",
+					")\r\n",
+					"\r\n",
+					"# En base a los resultados de la consulta anterior, se puede observar que únicamente aparecen las islas, por lo que no hay ningún continente que falte.\r\n",
+					""
+				],
+				"execution_count": 143
+			}
+		]
+	}
+}
